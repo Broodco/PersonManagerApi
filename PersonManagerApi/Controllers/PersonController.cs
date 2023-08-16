@@ -12,18 +12,18 @@ namespace PersonManagerApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class PeopleController : ControllerBase
+    public class PersonController : ControllerBase
     {
         private readonly DataContext _context;
 
-        public PeopleController(DataContext context)
+        public PersonController(DataContext context)
         {
             _context = context;
         }
 
         // GET: api/People
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Person>>> GetPersons([FromQuery] string? search)
+        public async Task<ActionResult<IEnumerable<Person>>> GetPersons([FromQuery] string? search = "")
         {
             var persons = _context.Persons.AsQueryable();
 
