@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Moq;
@@ -131,6 +132,37 @@ namespace PersonManagerApiTests
         }
 
         [Fact]
+        public async Task GetPerson_Returns_NotFound_If_Wrong_Id()
+        {
+            // Arrange 
+            var options = new DbContextOptionsBuilder<DataContext>()
+                .UseInMemoryDatabase(databaseName: "PersonManagerTestDatabase")
+                .Options;
+
+            using (var context = new DataContext(options))
+            {
+                context.Database.EnsureDeleted();
+                foreach (Person person in GetFakePersonsList())
+                {
+                    context.Persons.Add(person);
+                }
+
+                context.SaveChanges();
+            }
+
+            using (var context = new DataContext(options))
+            {
+                // Act
+                PersonController personController = new PersonController(context);
+                var result = (await personController.GetPerson(new Guid("b0452eaf-537d-4221-84d9-2252f7bc5aef"))).Result;
+
+                // Assert
+                Assert.NotNull(result);
+                Assert.IsType<NotFoundResult>(result);
+            }
+        }
+
+        [Fact]
         public async Task PutPerson_Updates_Person()
         {
             // Arrange 
@@ -172,6 +204,128 @@ namespace PersonManagerApiTests
         }
 
         [Fact]
+        public async Task PutPerson_Returns_NotFound_If_Not_Existing_Id()
+        {
+            // Arrange 
+            var options = new DbContextOptionsBuilder<DataContext>()
+                .UseInMemoryDatabase(databaseName: "PersonManagerTestDatabase")
+                .Options;
+
+            using (var context = new DataContext(options))
+            {
+                context.Database.EnsureDeleted();
+                foreach (Person person in GetFakePersonsList())
+                {
+                    context.Persons.Add(person);
+                }
+
+                context.SaveChanges();
+            }
+
+            using (var context = new DataContext(options))
+            {
+                // Act
+                PersonController personController = new PersonController(context);
+                var result = (await personController.PutPerson(
+                    new Guid("aa452eaf-537d-4221-84d9-2252f8bc5aef"),
+                    new Person
+                    {
+                        Id = new Guid("aa452eaf-537d-4221-84d9-2252f8bc5aef"),
+                        FirstName = "Luke",
+                        LastName = "Lars"
+                    }
+                ));
+
+                // Assert
+                Assert.NotNull(result);
+                Assert.IsType<NotFoundResult>(result);
+            }
+        }
+
+        [Fact]
+        public async Task PutPerson_Does_Not_Update_Person_If_Missing_Param_And_Throws_Exception()
+        {
+            // Arrange 
+            var options = new DbContextOptionsBuilder<DataContext>()
+                .UseInMemoryDatabase(databaseName: "PersonManagerTestDatabase")
+                .Options;
+
+            using (var context = new DataContext(options))
+            {
+                context.Database.EnsureDeleted();
+                foreach (Person person in GetFakePersonsList())
+                {
+                    context.Persons.Add(person);
+                }
+
+                context.SaveChanges();
+            }
+
+            using (var context = new DataContext(options))
+            {
+                // Act
+                PersonController personController = new PersonController(context);
+                Func<Task> act = () => personController.PutPerson(
+                    new Guid("b0452eaf-537d-4221-84d9-2252f8bc5aef"),
+                    new Person
+                    {
+                        Id = new Guid("b0452eaf-537d-4221-84d9-2252f8bc5aef"),
+                        FirstName = "Joe",
+                    }
+                );
+                var updatedPerson = context.Persons.Find(new Guid("b0452eaf-537d-4221-84d9-2252f8bc5aef"));
+
+                // Assert
+                await Assert.ThrowsAsync<InvalidOperationException>(act);
+                Assert.Equal(3, context.Persons.Count());
+                Assert.Equal("Luke", updatedPerson.FirstName);
+            }
+        }
+
+        [Fact]
+        public async Task PutPerson_Does_Not_Update_Person_If_Missing_Param_And_Returns_Bad_Request()
+        {
+            // Arrange 
+            var options = new DbContextOptionsBuilder<DataContext>()
+                .UseInMemoryDatabase(databaseName: "PersonManagerTestDatabase")
+                .Options;
+
+            using (var context = new DataContext(options))
+            {
+                context.Database.EnsureDeleted();
+                foreach (Person person in GetFakePersonsList())
+                {
+                    context.Persons.Add(person);
+                }
+
+                context.SaveChanges();
+            }
+
+            using (var context = new DataContext(options))
+            {
+                // Act
+                PersonController personController = new PersonController(context);
+                var result = (await personController.PutPerson(
+                    new Guid("b0452eaf-537d-4221-84d9-2252f8bc5aef"),
+                    new Person
+                    {
+                        Id = new Guid("aa452eaf-537d-4221-84d9-2252f8bc5aef"),
+                        FirstName = "Luke",
+                        LastName = "Lars"
+                    }
+                ));
+                var updatedPerson = context.Persons.Find(new Guid("b0452eaf-537d-4221-84d9-2252f8bc5aef"));
+
+                // Assert
+                Assert.NotNull(result);
+                Assert.Equal(3, context.Persons.Count());
+                Assert.IsType<BadRequestResult>(result);
+                Assert.Equal("Skywalker", updatedPerson.LastName);
+            }
+        }
+
+
+        [Fact]
         public async Task PostPerson_Creates_Person()
         {
             // Arrange 
@@ -211,6 +365,43 @@ namespace PersonManagerApiTests
                 Assert.Equal("Leia", createdPerson.FirstName);
             }
         }
+
+        [Fact]
+        public async Task PostPerson_Does_Not_Create_Person_If_Missing_Param_And_Throws_Exception()
+        {
+            // Arrange 
+            var options = new DbContextOptionsBuilder<DataContext>()
+                .UseInMemoryDatabase(databaseName: "PersonManagerTestDatabase")
+                .Options;
+
+            using (var context = new DataContext(options))
+            {
+                context.Database.EnsureDeleted();
+                foreach (Person person in GetFakePersonsList())
+                {
+                    context.Persons.Add(person);
+                }
+
+                context.SaveChanges();
+            }
+
+            using (var context = new DataContext(options))
+            {
+                // Act
+                PersonController personController = new PersonController(context);
+                Func<Task> act = () => personController.PostPerson(
+                    new Person
+                    {
+                        Id = new Guid("bea1522b-fcc3-4f84-a021-9875d7bb2bbd"),
+                        FirstName = "Leia"
+                    }    
+                );
+
+                // Assert
+                await Assert.ThrowsAsync<DbUpdateException>(act);
+                Assert.Equal(3, context.Persons.Count());
+            }
+        }
         
         [Fact]
         public async Task DeletePerson_Deletes_Person()
@@ -243,6 +434,37 @@ namespace PersonManagerApiTests
                 Assert.Equal(2, context.Persons.Count());
                 Assert.IsType<NoContentResult>(result);
                 Assert.Null(deletedPerson);
+            }
+        }
+
+        [Fact]
+        public async Task DeletePerson_Returns_NotFound_If_Not_Existing_Id()
+        {
+            // Arrange 
+            var options = new DbContextOptionsBuilder<DataContext>()
+                .UseInMemoryDatabase(databaseName: "PersonManagerTestDatabase")
+                .Options;
+
+            using (var context = new DataContext(options))
+            {
+                context.Database.EnsureDeleted();
+                foreach (Person person in GetFakePersonsList())
+                {
+                    context.Persons.Add(person);
+                }
+
+                context.SaveChanges();
+            }
+
+            using (var context = new DataContext(options))
+            {
+                // Act
+                PersonController personController = new PersonController(context);
+                var result = (await personController.DeletePerson(new Guid("aa452eaf-537d-4221-84d9-2252f8bc5aef")));
+
+                // Assert
+                Assert.NotNull(result);
+                Assert.IsType<NotFoundResult>(result);
             }
         }
 
