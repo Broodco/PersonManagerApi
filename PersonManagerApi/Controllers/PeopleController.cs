@@ -23,12 +23,21 @@ namespace PersonManagerApi.Controllers
 
         // GET: api/People
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Person>>> GetPersons()
+        public async Task<ActionResult<IEnumerable<Person>>> GetPersons([FromQuery] string? search)
         {
-          if (_context.Persons == null)
-          {
-              return NotFound();
-          }
+            var persons = _context.Persons.AsQueryable();
+
+            if (_context.Persons == null)
+            {
+                return NotFound();
+            }
+
+            if (!string.IsNullOrEmpty(search))
+            {
+                persons = persons.Where(person => person.FirstName.ToLower().Contains(search.ToLower()) || person.LastName.ToLower().Contains(search.ToLower()));
+                return await persons.ToListAsync();
+            }
+
             return await _context.Persons.ToListAsync();
         }
 
@@ -36,10 +45,10 @@ namespace PersonManagerApi.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<Person>> GetPerson(Guid id)
         {
-          if (_context.Persons == null)
-          {
-              return NotFound();
-          }
+            if (_context.Persons == null)
+            {
+                return NotFound();
+            }
             var person = await _context.Persons.FindAsync(id);
 
             if (person == null)
@@ -86,10 +95,10 @@ namespace PersonManagerApi.Controllers
         [HttpPost]
         public async Task<ActionResult<Person>> PostPerson(Person person)
         {
-          if (_context.Persons == null)
-          {
-              return Problem("Entity set 'DataContext.Persons'  is null.");
-          }
+            if (_context.Persons == null)
+            {
+                return Problem("Entity set 'DataContext.Persons'  is null.");
+            }
             _context.Persons.Add(person);
             await _context.SaveChangesAsync();
 
